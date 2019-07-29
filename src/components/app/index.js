@@ -1,4 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect } from "react";
+import randomColor from "random-color";
 
 import { uniqueId } from "../../lib/unique-id";
 import { useRoomId } from "../../hooks/room-id";
@@ -31,8 +32,8 @@ export function App() {
       ? JSON.parse(savedProfile)
       : {
           id: uniqueId(),
-          name: "John",
-          color: "#ff0000"
+          name: "",
+          color: randomColor().hexString()
         }
   );
 
