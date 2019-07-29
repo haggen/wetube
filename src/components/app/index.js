@@ -21,6 +21,9 @@ export function App() {
   const roomId = useRoomId();
   const [videoUrl, setVideoUrl] = useState();
   const videoPlayerRef = useRef();
+  const [expectedVideoPlayerState, setExpectedVideoPlayerState] = useState(
+    videoPlayerStates.unstarted
+  );
   const [currentUser, setCurrentUser] = useCurrentUser();
   const [userActionLog, setUserActionLog] = useState([]);
 
@@ -60,19 +63,13 @@ export function App() {
       case userActionTypes.sentMessage:
         break;
       case userActionTypes.pausedVideo:
-        if (
-          videoPlayerRef.current.getPlayerState() !== videoPlayerStates.paused
-        ) {
-          videoPlayerRef.current.pauseVideo();
-        }
+        setExpectedVideoPlayerState(videoPlayerStates.paused);
+        videoPlayerRef.current.pauseVideo();
         break;
       case userActionTypes.playedVideo:
-        if (
-          videoPlayerRef.current.getPlayerState() !== videoPlayerStates.playing
-        ) {
-          videoPlayerRef.current.seekTo(action.currentTime);
-          videoPlayerRef.current.playVideo();
-        }
+        setExpectedVideoPlayerState(videoPlayerStates.playing);
+        videoPlayerRef.current.seekTo(action.currentTime);
+        videoPlayerRef.current.playVideo();
         break;
       case userActionTypes.changedVideoUrl:
         if (!videoUrl || action.url !== videoUrl.toString()) {
@@ -130,14 +127,20 @@ export function App() {
   const handlePlayerStateChange = state => {
     switch (state) {
       case videoPlayerStates.playing:
-        pushUserAction(
-          makeOwnUserAction(userActionTypes.playedVideo, {
-            currentTime: videoPlayerRef.current.getCurrentTime()
-          })
-        );
+        if (expectedVideoPlayerState !== videoPlayerStates.playing) {
+          setExpectedVideoPlayerState(videoPlayerStates.playing);
+          pushUserAction(
+            makeOwnUserAction(userActionTypes.playedVideo, {
+              currentTime: videoPlayerRef.current.getCurrentTime()
+            })
+          );
+        }
         break;
       case videoPlayerStates.paused:
-        pushUserAction(makeOwnUserAction(userActionTypes.pausedVideo));
+        if (expectedVideoPlayerState !== videoPlayerStates.paused) {
+          setExpectedVideoPlayerState(videoPlayerStates.paused);
+          pushUserAction(makeOwnUserAction(userActionTypes.pausedVideo));
+        }
         break;
       default:
         console.warn("Unhandled playback state", state);
