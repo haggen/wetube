@@ -1,5 +1,6 @@
+import { useState, useEffect } from "react";
 import randomColor from "random-color";
-import { uniqueId } from "./unique-id";
+import { uniqueId } from "../lib/unique-id";
 
 const usernames = [
   "Akular",
@@ -35,3 +36,19 @@ export const randomUser = () => ({
   name: usernames[Math.floor(Math.random() * usernames.length)],
   color: randomColor().hexString()
 });
+
+const localStorageProfileKey = "profile";
+
+export const useCurrentUser = () => {
+  const profile = localStorage.getItem(localStorageProfileKey);
+
+  const [currentUser, setCurrentUser] = useState(
+    profile ? JSON.parse(profile) : randomUser()
+  );
+
+  useEffect(() => {
+    localStorage.setItem(localStorageProfileKey, JSON.stringify(currentUser));
+  }, [currentUser]);
+
+  return [currentUser, setCurrentUser];
+};

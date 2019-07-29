@@ -19,7 +19,7 @@ export const useWebSocket = (url, connectionHandler, messageHandler) => {
         messageHandler(JSON.parse(e.data));
       };
     }
-  }, [messageHandler]);
+  }, [connectionHandler, messageHandler]);
 
   const dispatch = payload => {
     if (webSocketRef.current) {

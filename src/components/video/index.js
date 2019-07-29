@@ -3,7 +3,7 @@ import YouTube from "react-youtube";
 
 import style from "./style.module.css";
 
-export const playerStates = {
+export const videoPlayerStates = {
   unstarted: -1,
   ended: 0,
   playing: 1,
@@ -12,11 +12,7 @@ export const playerStates = {
   cued: 5
 };
 
-Object.keys(playerStates).forEach(name => {
-  playerStates[playerStates[name]] = name;
-});
-
-export function VideoPlayer({ playerRef, url, onVideoPlayerStateChange }) {
+export function Video({ playerRef, url, onPlayerStateChange }) {
   const videoId = useMemo(() => {
     try {
       const parsedUrl = new URL(url);
@@ -36,20 +32,12 @@ export function VideoPlayer({ playerRef, url, onVideoPlayerStateChange }) {
   };
 
   const handleStateChange = e => {
-    onVideoPlayerStateChange(e.data);
-  };
-
-  const options = {
-    playerVars: {
-      // controls: 0,
-      // disablekb: 1
-    }
+    onPlayerStateChange(e.data);
   };
 
   return (
     <YouTube
       containerClassName={style.video}
-      opts={options}
       videoId={videoId}
       onReady={e => handleReady(e)}
       onStateChange={e => handleStateChange(e)}

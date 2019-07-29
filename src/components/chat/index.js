@@ -1,34 +1,34 @@
 import React, { useRef, useLayoutEffect } from "react";
 import useStayScrolled from "react-stay-scrolled";
 
-import { userActions } from "../app";
+import { userActionTypes } from "../app";
 
 import style from "./style.module.css";
 
-const formattedAction = entry => {
-  switch (entry.action) {
-    case userActions.sentMessage:
-      return "says: " + entry.message;
-    case userActions.pausedVideo:
+const formattedAction = action => {
+  switch (action.type) {
+    case userActionTypes.sentMessage:
+      return "says: " + action.message;
+    case userActionTypes.pausedVideo:
       return "paused the video.";
-    case userActions.playedVideo:
+    case userActionTypes.playedVideo:
       return "played the video.";
-    case userActions.changedVideoUrl:
-      return "changed video URL to " + entry.url;
-    case userActions.connected:
+    case userActionTypes.changedVideoUrl:
+      return "changed video URL to " + action.url;
+    case userActionTypes.connected:
       return "connected.";
     default:
       return "unknown action";
   }
 };
 
-export function Chat({ onMessage, log }) {
-  const listRef = useRef();
-  const { stayScrolled } = useStayScrolled(listRef);
+export function Chat({ log, onMessage }) {
+  const overflowingRef = useRef();
+  const { stayScrolled } = useStayScrolled(overflowingRef);
 
   useLayoutEffect(() => {
     stayScrolled();
-  }, [log.length]);
+  }, [stayScrolled, log.length]);
 
   const handleChatKeyDown = e => {
     if (e.key === "Enter") {
@@ -40,14 +40,14 @@ export function Chat({ onMessage, log }) {
 
   return (
     <aside className={style.layout}>
-      <div className={style.history}>
-        <ul ref={listRef}>
-          {(log || []).map(entry => (
-            <li key={entry.timestamp}>
-              <strong style={{ backgroundColor: entry.user.color }}>
-                {entry.user.name}
+      <div ref={overflowingRef} className={style.history}>
+        <ul>
+          {(log || []).map(action => (
+            <li key={action.timestamp}>
+              <strong style={{ backgroundColor: action.user.color }}>
+                {action.user.name}
               </strong>{" "}
-              {formattedAction(entry)}
+              {formattedAction(action)}
             </li>
           ))}
         </ul>

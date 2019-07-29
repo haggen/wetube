@@ -1,15 +1,15 @@
-import React, { useRef, useState, useCallback, useEffect } from "react";
+import React, { useRef, useState } from "react";
 
 import { useRoomId } from "../../hooks/room-id";
 import { useWebSocket } from "../../hooks/web-socket";
-import { randomUser } from "../../lib/random-user";
-import { VideoPlayer, playerStates } from "../video-player";
+import { useCurrentUser } from "../../hooks/current-user";
+import { Video, videoPlayerStates } from "../video";
 import { Chat } from "../chat";
 import { Profile } from "../profile";
 
 import style from "./style.module.css";
 
-export const userActions = {
+export const userActionTypes = {
   connected: "connected",
   sentMessage: "sent-message",
   changedVideoUrl: "changed-video-url",
@@ -17,127 +17,127 @@ export const userActions = {
   playedVideo: "played-video"
 };
 
-const localStorageUserKey = "user";
-
 export function App() {
   const roomId = useRoomId();
-
   const [videoUrl, setVideoUrl] = useState();
-  const playerRef = useRef(null);
+  const videoPlayerRef = useRef();
+  const [currentUser, setCurrentUser] = useCurrentUser();
+  const [userActionLog, setUserActionLog] = useState([]);
 
-  const savedUser = localStorage.getItem(localStorageUserKey);
-  const [user, setUser] = useState(
-    savedUser ? JSON.parse(savedUser) : randomUser()
-  );
-
-  const [actionLog, setActionLog] = useState([]);
-
-  const makeAction = (action, extra = {}) => ({
-    timestamp: Date.now(),
-    action,
-    user,
-    ...extra
-  });
-
-  const pushAction = action => {
-    console.log("Push action", action);
-
-    setActionLog(log => log.concat(action));
-
-    if (action.user.id === user.id) {
-      switch (action.action) {
-        case userActions.changedVideoUrl:
-          broadcast(action);
-          break;
-        case userActions.playedVideo:
-          broadcast(action);
-          break;
-        case userActions.pausedVideo:
-          broadcast(action);
-          break;
-        case userActions.sentMessage:
-          broadcast(action);
-          break;
-        case userActions.connected:
-          broadcast(action);
-          break;
-        default:
-          console.log("Unhandled action", action);
-      }
+  const handleOwnUserAction = action => {
+    switch (action.type) {
+      case userActionTypes.changedVideoUrl:
+        broadcast(action);
+        break;
+      case userActionTypes.playedVideo:
+        broadcast(action);
+        break;
+      case userActionTypes.pausedVideo:
+        broadcast(action);
+        break;
+      case userActionTypes.sentMessage:
+        broadcast(action);
+        break;
+      case userActionTypes.connected:
+        broadcast(action);
+        break;
+      default:
+        console.log("Unhandled own action", action);
     }
   };
 
-  const [lastKnownPlayerState, setLastKnownPlayerState] = useState(
-    playerStates.unstarted
-  );
+  const handleRemoteUserAction = action => {
+    switch (action.type) {
+      case userActionTypes.connected:
+        if (videoUrl) {
+          broadcast(
+            makeOwnUserAction(userActionTypes.changedVideoUrl, {
+              url: videoUrl.toString()
+            })
+          );
+        }
+        break;
+      case userActionTypes.sentMessage:
+        break;
+      case userActionTypes.pausedVideo:
+        if (
+          videoPlayerRef.current.getPlayerState() !== videoPlayerStates.paused
+        ) {
+          videoPlayerRef.current.pauseVideo();
+        }
+        break;
+      case userActionTypes.playedVideo:
+        if (
+          videoPlayerRef.current.getPlayerState() !== videoPlayerStates.playing
+        ) {
+          videoPlayerRef.current.seekTo(action.currentTime);
+          videoPlayerRef.current.playVideo();
+        }
+        break;
+      case userActionTypes.changedVideoUrl:
+        if (!videoUrl || action.url !== videoUrl.toString()) {
+          setVideoUrl(action.url);
+        }
+        break;
+      default:
+        console.warn("Unhandled remote action", action);
+    }
+  };
 
-  const [readyState, broadcast] = useWebSocket(
+  const pushUserAction = action => {
+    console.log("Push user action", action);
+    setUserActionLog(log => log.concat(action));
+    if (action.user.id === currentUser.id) {
+      handleOwnUserAction(action);
+    } else {
+      handleRemoteUserAction(action);
+    }
+  };
+
+  const makeOwnUserAction = (type, data = {}) => ({
+    timestamp: Date.now(),
+    type,
+    user: currentUser,
+    ...data
+  });
+
+  const [, broadcast] = useWebSocket(
     "wss://ws.crz.li/wetube/" + roomId,
     () => {
-      pushAction(makeAction(userActions.connected));
+      pushUserAction(makeOwnUserAction(userActionTypes.connected));
     },
-    message => {
-      switch (message.action) {
-        case userActions.connected:
-          pushAction(message);
-          break;
-        case userActions.sentMessage:
-          pushAction(message);
-          break;
-        case userActions.pausedVideo:
-          pushAction(message);
-          setLastKnownPlayerState(playerStates.paused);
-          playerRef.current.pauseVideo();
-          break;
-        case userActions.playedVideo:
-          pushAction(message);
-          setLastKnownPlayerState(playerStates.playing);
-          playerRef.current.seekTo(message.currentTime);
-          playerRef.current.playVideo();
-          break;
-        case userActions.changedVideoUrl:
-          pushAction(message);
-          setVideoUrl(message.url);
-          break;
-        default:
-          console.warn("Unhandled message", message);
-      }
+    action => {
+      pushUserAction(action);
     }
   );
-
-  useEffect(() => {
-    localStorage.setItem(localStorageUserKey, JSON.stringify(user));
-  }, [user]);
 
   const handleVideoUrlChange = value => {
     try {
       const url = new URL(value);
       if (/^(youtu\.be|www\.youtube\.com)$/.test(url.hostname)) {
         setVideoUrl(url);
-        pushAction(makeAction(userActions.changedVideoUrl, { url }));
+        pushUserAction(
+          makeOwnUserAction(userActionTypes.changedVideoUrl, {
+            url: url.toString()
+          })
+        );
       }
     } catch (e) {
       console.warn(e);
     }
   };
 
-  const handleVideoPlayerStateChange = state => {
-    if (playerRef.current.getPlayerState() === lastKnownPlayerState) {
-      return;
-    }
-
+  const handlePlayerStateChange = state => {
     switch (state) {
-      case playerStates.playing:
-        pushAction(
-          makeAction(userActions.playedVideo, {
-            currentTime: playerRef.current.getCurrentTime()
+      case videoPlayerStates.playing:
+        pushUserAction(
+          makeOwnUserAction(userActionTypes.playedVideo, {
+            currentTime: videoPlayerRef.current.getCurrentTime()
           })
         );
-        setLastKnownPlayerState(playerStates.playing);
         break;
-      case playerStates.paused:
-        pushAction(makeAction(userActions.pausedVideo));
-        setLastKnownPlayerState(playerStates.paused);
+      case videoPlayerStates.paused:
+        pushUserAction(makeOwnUserAction(userActionTypes.pausedVideo));
         break;
       default:
         console.warn("Unhandled playback state", state);
@@ -145,7 +145,7 @@ export function App() {
   };
 
   const handleChatMessage = message => {
-    pushAction(makeAction(userActions.sentMessage, { message }));
+    pushUserAction(makeOwnUserAction(userActionTypes.sentMessage, { message }));
   };
 
   return (
@@ -163,21 +163,19 @@ export function App() {
         />
       </div>
       <div className={style.profile}>
-        <Profile onChange={user => setUser(user)} user={user} />
+        <Profile onChange={user => setCurrentUser(user)} user={currentUser} />
       </div>
       <div className={style.content}>
-        <VideoPlayer
+        <Video
           className="video"
-          playerRef={playerRef}
+          playerRef={videoPlayerRef}
           url={videoUrl}
-          onVideoPlayerStateChange={state =>
-            handleVideoPlayerStateChange(state)
-          }
+          onPlayerStateChange={state => handlePlayerStateChange(state)}
         />
       </div>
       <div className={style.sidebar}>
         <Chat
-          log={actionLog}
+          log={userActionLog}
           onMessage={message => handleChatMessage(message)}
         />
       </div>

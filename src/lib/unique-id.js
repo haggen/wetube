@@ -1,3 +1,7 @@
+import Hashids from "hashids";
+
+const hashids = new Hashids();
+
 export const uniqueId = () => {
-  return Date.now().toString(36);
+  return hashids.encode(Date.now());
 };
