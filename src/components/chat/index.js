@@ -31,21 +31,16 @@ export function Chat({ onMessage, log }) {
 
   return (
     <aside className={style.layout}>
-      <ul className={style.history}>
-        {(log || []).map(entry => (
-          <li key={entry.timestamp}>
-            <strong style={{ backgroundColor: entry.author.color }}>
-              {entry.author.name}
-            </strong>{" "}
-            {formattedAction(entry)}
-          </li>
-        ))}
-      </ul>
-      <textarea
-        className={style.textarea}
-        placeholder="Say something..."
-        onKeyDown={e => handleChatKeyDown(e)}
-      />
+      <div className={style.history}>
+        <ul>
+          {(log || []).map(entry => (
+            <li key={entry.timestamp}>
+              <strong style={{ backgroundColor: entry.author.color }}>{entry.author.name}</strong> {formattedAction(entry)}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <textarea className={style.textarea} placeholder="Say something..." onKeyDown={e => handleChatKeyDown(e)} />
     </aside>
   );
 }
