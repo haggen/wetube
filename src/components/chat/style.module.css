@@ -1,0 +1,20 @@
+.layout {
+  display: grid;
+  gap: 0.25rem;
+  grid-template: auto 6rem / auto;
+  height: 100%;
+}
+
+.history {
+  background-color: #111;
+  padding: 0.75rem;
+  overflow-y: scroll;
+}
+
+.textarea {
+  background-color: #111;
+  display: block;
+  height: 100%;
+  padding: 0.75rem;
+  width: 100%;
+}

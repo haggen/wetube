@@ -1,0 +1,15 @@
+body {
+  background-color: black;
+  color: white;
+  font-family: Arimo, sans-serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+[aria-hidden] {
+  display: none;
+}

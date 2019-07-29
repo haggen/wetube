@@ -1,0 +1,39 @@
+.layout {
+  background-color: #222;
+  display: grid;
+  grid-template: 3rem auto / auto minmax(15rem, 30%);
+  gap: 0.25rem;
+  padding: 0.25rem;
+  height: 100%;
+}
+
+.topbar {
+  display: flex;
+  align-items: stretch;
+}
+
+.topbar h1 {
+  font-size: 1.5em;
+}
+
+.topbar h1 a {
+  align-items: center;
+  color: darkgray;
+  display: flex;
+  height: 100%;
+  padding: 0 2rem;
+  white-space: nowrap;
+}
+
+.topbar input {
+  display: flex;
+  background-color: #111;
+  padding: 0 0.75rem;
+  width: 100%;
+}
+
+.content {
+}
+
+.sidebar {
+}
