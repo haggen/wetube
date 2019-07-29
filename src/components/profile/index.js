@@ -2,13 +2,13 @@ import React from "react";
 
 import style from "./style.module.css";
 
-export function Profile({ onChange, author }) {
+export function Profile({ onChange, user }) {
   const handleNameChange = e => {
-    onChange({ ...author, name: e.target.value });
+    onChange({ ...user, name: e.target.value });
   };
 
   const handleColorChange = e => {
-    onChange({ ...author, color: e.target.value });
+    onChange({ ...user, color: e.target.value });
   };
 
   return (
@@ -16,14 +16,14 @@ export function Profile({ onChange, author }) {
       <input
         className={style.name}
         type="text"
-        value={author.name}
+        value={user.name}
         onChange={e => handleNameChange(e)}
-        placeholder="e.g. John Doe"
+        placeholder="Your name, e.g. John Doe"
       />
       <input
         className={style.color}
         type="color"
-        value={author.color}
+        value={user.color}
         onChange={e => handleColorChange(e)}
       />
     </div>

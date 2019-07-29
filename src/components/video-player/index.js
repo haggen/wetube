@@ -3,7 +3,7 @@ import YouTube from "react-youtube";
 
 import style from "./style.module.css";
 
-export const playbackStates = {
+export const playerStates = {
   unstarted: -1,
   ended: 0,
   playing: 1,
@@ -12,11 +12,11 @@ export const playbackStates = {
   cued: 5
 };
 
-Object.keys(playbackStates).forEach(name => {
-  playbackStates[playbackStates[name]] = name;
+Object.keys(playerStates).forEach(name => {
+  playerStates[playerStates[name]] = name;
 });
 
-export function VideoPlayer({ playerRef, url, onInteraction }) {
+export function VideoPlayer({ playerRef, url, onVideoPlayerStateChange }) {
   const videoId = useMemo(() => {
     try {
       const parsedUrl = new URL(url);
@@ -36,41 +36,23 @@ export function VideoPlayer({ playerRef, url, onInteraction }) {
   };
 
   const handleStateChange = e => {
-    console.log("Player state change:", e);
-  };
-
-  const togglePlaybackState = e => {
-    const playbackState = playerRef.current.getPlayerState();
-    switch (playbackState) {
-      case playbackStates.playing:
-        playerRef.current.pauseVideo();
-        onInteraction(playbackStates.paused);
-        break;
-      default:
-        playerRef.current.playVideo();
-        onInteraction(playbackStates.playing);
-    }
+    onVideoPlayerStateChange(e.data);
   };
 
   const options = {
     playerVars: {
-      controls: 0,
-      disablekb: 1
+      // controls: 0,
+      // disablekb: 1
     }
   };
 
   return (
-    <div className={style.layout}>
-      <YouTube
-        containerClassName={style.video}
-        opts={options}
-        videoId={videoId}
-        onReady={e => handleReady(e)}
-        onStateChange={e => handleStateChange(e)}
-      />
-      <menu type="toolbar" className={style.controls}>
-        <button onClick={e => togglePlaybackState(e)}>Play/Pause</button>
-      </menu>
-    </div>
+    <YouTube
+      containerClassName={style.video}
+      opts={options}
+      videoId={videoId}
+      onReady={e => handleReady(e)}
+      onStateChange={e => handleStateChange(e)}
+    />
   );
 }

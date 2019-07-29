@@ -1,25 +1,5 @@
-.layout {
-  display: grid;
-  gap: 0.25rem;
-  grid-template-rows: auto 3rem;
-  height: 100%;
-}
-
-.video {
-  pointer-events: none;
-}
-
 .video,
 .video iframe {
   height: 100%;
   width: 100%;
-}
-
-.controls {
-  display: grid;
-  justify-items: stretch;
-}
-
-.controls button {
-  background-color: #111;
 }

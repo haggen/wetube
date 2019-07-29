@@ -35,12 +35,19 @@ export function Chat({ onMessage, log }) {
         <ul>
           {(log || []).map(entry => (
             <li key={entry.timestamp}>
-              <strong style={{ backgroundColor: entry.author.color }}>{entry.author.name}</strong> {formattedAction(entry)}
+              <strong style={{ backgroundColor: entry.user.color }}>
+                {entry.user.name}
+              </strong>{" "}
+              {formattedAction(entry)}
             </li>
           ))}
         </ul>
       </div>
-      <textarea className={style.textarea} placeholder="Say something..." onKeyDown={e => handleChatKeyDown(e)} />
+      <textarea
+        className={style.textarea}
+        placeholder="Say something..."
+        onKeyDown={e => handleChatKeyDown(e)}
+      />
     </aside>
   );
 }

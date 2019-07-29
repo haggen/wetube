@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-export const useWebSocket = (url, handler) => {
+export const useWebSocket = (url, connectionHandler, messageHandler) => {
   const webSocketRef = useRef(null);
 
   useEffect(() => {
@@ -13,13 +13,13 @@ export const useWebSocket = (url, handler) => {
   useEffect(() => {
     if (webSocketRef.current) {
       webSocketRef.current.onopen = e => {
-        handler({ action: "connected" });
+        connectionHandler();
       };
       webSocketRef.current.onmessage = e => {
-        handler(JSON.parse(e.data));
+        messageHandler(JSON.parse(e.data));
       };
     }
-  }, [handler]);
+  }, [messageHandler]);
 
   const dispatch = payload => {
     if (webSocketRef.current) {

@@ -1,10 +1,9 @@
 import React, { useRef, useState, useCallback, useEffect } from "react";
-import randomColor from "random-color";
 
-import { uniqueId } from "../../lib/unique-id";
 import { useRoomId } from "../../hooks/room-id";
 import { useWebSocket } from "../../hooks/web-socket";
-import { VideoPlayer, playbackStates } from "../video-player";
+import { randomUser } from "../../lib/random-user";
+import { VideoPlayer, playerStates } from "../video-player";
 import { Chat } from "../chat";
 import { Profile } from "../profile";
 
@@ -18,72 +17,86 @@ export const userActions = {
   playedVideo: "played-video"
 };
 
+const localStorageUserKey = "user";
+
 export function App() {
   const roomId = useRoomId();
 
   const [videoUrl, setVideoUrl] = useState();
-  // "https://www.youtube.com/watch?v=4rt695LhGjw"
   const playerRef = useRef(null);
 
-  const savedProfile = localStorage.getItem("profile");
-
-  const [author, setAuthor] = useState(
-    savedProfile
-      ? JSON.parse(savedProfile)
-      : {
-          id: uniqueId(),
-          name: "",
-          color: randomColor().hexString()
-        }
+  const savedUser = localStorage.getItem(localStorageUserKey);
+  const [user, setUser] = useState(
+    savedUser ? JSON.parse(savedUser) : randomUser()
   );
 
-  useEffect(() => {
-    localStorage.setItem("profile", JSON.stringify(author));
-  }, [author]);
+  const [actionLog, setActionLog] = useState([]);
 
-  const [log, setLog] = useState([]);
+  const makeAction = (action, extra = {}) => ({
+    timestamp: Date.now(),
+    action,
+    user,
+    ...extra
+  });
 
-  const pushLog = entry => {
-    setLog(log => log.concat({ timestamp: Date.now(), ...entry }));
-  };
+  const pushAction = action => {
+    console.log("Push action", action);
 
-  const handleVideoUrlChange = value => {
-    try {
-      const url = new URL(value);
-      if (/^(youtu\.be|www\.youtube\.com)$/.test(url.hostname)) {
-        setVideoUrl(url);
-        broadcast({ action: userActions.changedVideoUrl, author, url });
-        pushLog({ action: userActions.changedVideoUrl, author, url });
+    setActionLog(log => log.concat(action));
+
+    if (action.user.id === user.id) {
+      switch (action.action) {
+        case userActions.changedVideoUrl:
+          broadcast(action);
+          break;
+        case userActions.playedVideo:
+          broadcast(action);
+          break;
+        case userActions.pausedVideo:
+          broadcast(action);
+          break;
+        case userActions.sentMessage:
+          broadcast(action);
+          break;
+        case userActions.connected:
+          broadcast(action);
+          break;
+        default:
+          console.log("Unhandled action", action);
       }
-    } catch (e) {
-      console.warn(e);
     }
   };
 
+  const [lastKnownPlayerState, setLastKnownPlayerState] = useState(
+    playerStates.unstarted
+  );
+
   const [readyState, broadcast] = useWebSocket(
     "wss://ws.crz.li/wetube/" + roomId,
+    () => {
+      pushAction(makeAction(userActions.connected));
+    },
     message => {
       switch (message.action) {
         case userActions.connected:
-          if (message.author) {
-            pushLog({ action: userActions.connected, author: message.author });
-          } else {
-            broadcast({ action: userActions.connected, author });
-          }
+          pushAction(message);
           break;
         case userActions.sentMessage:
-          pushLog(message);
+          pushAction(message);
           break;
         case userActions.pausedVideo:
-          pushLog(message);
+          pushAction(message);
+          setLastKnownPlayerState(playerStates.paused);
           playerRef.current.pauseVideo();
           break;
         case userActions.playedVideo:
-          pushLog(message);
+          pushAction(message);
+          setLastKnownPlayerState(playerStates.playing);
+          playerRef.current.seekTo(message.currentTime);
           playerRef.current.playVideo();
           break;
         case userActions.changedVideoUrl:
-          pushLog(message);
+          pushAction(message);
           setVideoUrl(message.url);
           break;
         default:
@@ -92,24 +105,47 @@ export function App() {
     }
   );
 
-  const handlePlayerInteraction = playbackState => {
-    switch (playbackState) {
-      case playbackStates.playing:
-        broadcast({ action: userActions.playedVideo, author });
-        pushLog({ action: userActions.playedVideo, author });
+  useEffect(() => {
+    localStorage.setItem(localStorageUserKey, JSON.stringify(user));
+  }, [user]);
+
+  const handleVideoUrlChange = value => {
+    try {
+      const url = new URL(value);
+      if (/^(youtu\.be|www\.youtube\.com)$/.test(url.hostname)) {
+        setVideoUrl(url);
+        pushAction(makeAction(userActions.changedVideoUrl, { url }));
+      }
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  const handleVideoPlayerStateChange = state => {
+    if (playerRef.current.getPlayerState() === lastKnownPlayerState) {
+      return;
+    }
+
+    switch (state) {
+      case playerStates.playing:
+        pushAction(
+          makeAction(userActions.playedVideo, {
+            currentTime: playerRef.current.getCurrentTime()
+          })
+        );
+        setLastKnownPlayerState(playerStates.playing);
         break;
-      case playbackStates.paused:
-        broadcast({ action: userActions.pausedVideo, author });
-        pushLog({ action: userActions.pausedVideo, author });
+      case playerStates.paused:
+        pushAction(makeAction(userActions.pausedVideo));
+        setLastKnownPlayerState(playerStates.paused);
         break;
       default:
-        console.warn("Unhandled playback state", playbackState);
+        console.warn("Unhandled playback state", state);
     }
   };
 
   const handleChatMessage = message => {
-    broadcast({ action: userActions.sentMessage, author, message });
-    pushLog({ action: userActions.sentMessage, author, message });
+    pushAction(makeAction(userActions.sentMessage, { message }));
   };
 
   return (
@@ -127,18 +163,23 @@ export function App() {
         />
       </div>
       <div className={style.profile}>
-        <Profile onChange={author => setAuthor(author)} author={author} />
+        <Profile onChange={user => setUser(user)} user={user} />
       </div>
       <div className={style.content}>
         <VideoPlayer
           className="video"
           playerRef={playerRef}
           url={videoUrl}
-          onInteraction={state => handlePlayerInteraction(state)}
+          onVideoPlayerStateChange={state =>
+            handleVideoPlayerStateChange(state)
+          }
         />
       </div>
       <div className={style.sidebar}>
-        <Chat log={log} onMessage={message => handleChatMessage(message)} />
+        <Chat
+          log={actionLog}
+          onMessage={message => handleChatMessage(message)}
+        />
       </div>
     </main>
   );
