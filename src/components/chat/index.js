@@ -1,4 +1,6 @@
-import React from "react";
+import React, { useRef, useLayoutEffect } from "react";
+import useStayScrolled from "react-stay-scrolled";
+
 import { userActions } from "../app";
 
 import style from "./style.module.css";
@@ -21,6 +23,13 @@ const formattedAction = entry => {
 };
 
 export function Chat({ onMessage, log }) {
+  const listRef = useRef();
+  const { stayScrolled } = useStayScrolled(listRef);
+
+  useLayoutEffect(() => {
+    stayScrolled();
+  }, [log.length]);
+
   const handleChatKeyDown = e => {
     if (e.key === "Enter") {
       onMessage(e.target.value);
@@ -32,7 +41,7 @@ export function Chat({ onMessage, log }) {
   return (
     <aside className={style.layout}>
       <div className={style.history}>
-        <ul>
+        <ul ref={listRef}>
           {(log || []).map(entry => (
             <li key={entry.timestamp}>
               <strong style={{ backgroundColor: entry.user.color }}>
